@@ -1,0 +1,45 @@
+{% extends 'app_doc/create_base.html' %}
+{% load staticfiles %}
+{% block title %}新建文档模板{% endblock %}
+{% block subtitle %}新建模板{% endblock %}
+
+{% block content %}
+    <div class="create-doc-form">
+        <div class="layui-form">
+            <label class="layui-form-label">模板标题</label>
+            <div class="layui-input-inline">
+              <input type="text" name="doc-name" id="doctemp-name" required lay-verify="required" placeholder="请输入模板名称" autocomplete="off" class="layui-input">
+            </div>
+            <label class="doc-form-label">
+                <button class="layui-btn layui-btn-normal" onclick="createDocTemp()">保存</button>
+            </label>
+        </div>
+    </div>
+    <div id="editor-md">
+        <textarea style="display:none;"></textarea>
+        <textarea class="editormd-html-textarea" name="$id-html-code"></textarea>
+    </div>
+{% endblock %}
+
+{% block custom_script %}
+    <script>
+        //保存文档模板
+        createDocTemp = function(){
+            var data = {
+                'name':$("#doctemp-name").val(),
+                'content':editor.getMarkdown(),
+            }
+            $.post("{% url 'create_doctemp' %}",data,function(r){
+                if(r.status){
+                    //创建成功
+                    layer.msg('保存成功',function(){
+                        window.location.href = "{% url 'pro_list' %}";
+                    });
+                }else{
+                    //创建失败
+                    layer.msg('保存失败');
+                }
+            });
+        };
+    </script>
+{% endblock %}

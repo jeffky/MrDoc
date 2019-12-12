@@ -1,0 +1,160 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <title>MrDoc - 一个简单的文档写作系统</title>
+    <link href="{% static 'layui/css/layui.css' %}" rel="stylesheet">
+    <link href="{% static 'mrdoc.css' %}" rel="stylesheet">
+    <link rel="icon" href="{% static 'favicon_16.png' %}"/>
+</head>
+<body class="layui-layout-body">
+<!-- 页头 -->
+{% include 'app_doc/head_base.html' %}
+<!-- 页头结束 -->
+
+<!-- 主体 -->
+<div class="layui-main">
+    {% for p in project_list %}
+        <div class="project-item">
+            <a href="{% url 'pro_index' p.id %}">
+                <div class="layui-card">
+                    <div class="layui-card-header"><strong><i class="layui-icon layui-icon-read"></i> {{ p.name }}</strong>
+                    </div>
+                  <div class="layui-card-body">
+                      <p>作者：{{p.create_user}}</p>
+                      <p class="tooltip">简介：
+                          {% if p.intro == "" %}
+                          <span class="">此文集没有填写简介</span>
+                          {% else %}
+                          <span class="">{{ p.intro | slice:'16' }}…</span>
+                          <span class="tooltip-content clearfix">{{ p.intro }}</span>
+                          {% endif %}
+                      </p>
+                      <p></p>
+                  </div>
+                </div>
+            </a>
+        </div>
+    {% endfor %}
+{#    <div class="project-item">#}
+{#        <a href="javascript:void(0);" onclick="createPro();">#}
+{#            <div class="layui-card">#}
+{#                <div class="layui-card-header"><i class="layui-icon layui-icon-add-1"></i> 创建文集</div>#}
+{#              <div class="layui-card-body">#}
+{#                新建一个文集，开始愉快的写作……#}
+{#              </div>#}
+{#            </div>#}
+{#        </a>#}
+{#    </div>#}
+    <div class="project-item">
+        <a href="{% url 'create_doc' %}" target="_blank">
+            <div class="layui-card">
+                <div class="layui-card-header"><i class="layui-icon layui-icon-add-1"></i> 创建文档</div>
+              <div class="layui-card-body">
+                新建一个文档，马上开始写作……
+              </div>
+            </div>
+        </a>
+    </div>
+</div>
+<!-- 主体结束 -->
+<script src="https://cdn.bootcss.com/jquery/3.1.1/jquery.min.js"></script>
+<script src="{% static 'layui/layui.all.js' %}"></script>
+{% block custom_script %}
+    <script>
+        $.ajaxSetup({
+            data: {csrfmiddlewaretoken: '{{ csrf_token }}' },
+        });
+        var layer = layui.layer;
+        //创建新文集
+        createPro = function () {
+            layer.open({
+                type:1,
+                title:'新建文集',
+                area:'300px;',
+                id:'createPro',//配置ID
+                content:'<div style="padding: 20px;"><input class="layui-input" type="text" id="pname" style="margin-bottom:10px;" placeholder="输入文集名" required  lay-verify="required"><textarea name="desc" id="desc" placeholder="输入文集简介" class="layui-textarea"></textarea></div>',
+                btn:['确定','取消'], //添加按钮
+                btnAlign:'c', //按钮居中
+                yes:function (index,layero) {
+                    data = {
+                        'pname':$("#pname").val(),
+                        'desc':$("#desc").val(),
+                    }
+                    $.post("{% url 'create_project' %}",data,function(r){
+                        if(r.status){
+                            //创建成功，刷新页面
+                            window.location.reload();
+                        }else{
+                            //创建失败，提示
+                            console.log(r)
+
+                        }
+                    })
+                },
+            });
+        };
+        //修改文集
+        modifyPro = function(pro_id){
+            layer.open({
+                type:1,
+                title:'修改文集',
+                area:'300px;',
+                id:'createPro',//配置ID
+                content:'<div style="padding: 20px;"><input class="layui-input" type="text" id="pname" style="margin-bottom:10px;" placeholder="输入文集名" required  lay-verify="required"><textarea name="desc" id="desc" placeholder="输入文集简介" class="layui-textarea"></textarea></div>',
+                btn:['确定','取消'], //添加按钮
+                btnAlign:'c', //按钮居中
+                yes:function (index,layero) {
+                    data = {
+                        'pro_id':pro_id,
+                        'name':$("#pname").val(),
+                        'desc':$("#desc").val(),
+                    }
+                    $.post("{% url 'modify_project' %}",data,function(r){
+                        if(r.status){
+                            //修改成功，刷新页面
+                            window.location.reload();
+                        }else{
+                            //修改失败，提示
+                            console.log(r)
+                        }
+                    })
+                },
+            });
+        };
+        //修改用户密码
+        changePwd = function(uid,username){
+            layer.open({
+                type:1,
+                title:'修改密码',
+                area:'300px;',
+                id:'changePwd',
+                content:'<div style="padding:10px 0 0 20px;">修改用户[' + username + ']的密码：</div><div style="padding: 20px;"><input class="layui-input" type="password" id="newPwd1" style="margin-bottom:10px;" placeholder="输入新密码" required  lay-verify="required"><input class="layui-input" type="password" id="newPwd2" placeholder="再次确认新密码" required  lay-verify="required"></div>',
+                btn:['确认修改','取消'],
+                yes:function (index,layero) {
+                    data = {
+                        'password':$("#newPwd1").val(),
+                        'password2':$("#newPwd2").val(),
+                    }
+                    $.post("{% url 'modify_pwd' %}",data,function(r){
+                        if(r.status){
+                            //修改成功
+                            window.location.reload();
+                            //layer.close(index)
+                        }else{
+                            //修改失败，提示
+                            //console.log(r)
+                            layer.msg(r.data)
+                        }
+                    })
+                },
+            })
+        };
+    </script>
+    <!-- 统计代码开始 -->
+        {{ static | safe }}
+    <!-- 统计代码结束 -->
+{% endblock %}
+</body>
+</html>

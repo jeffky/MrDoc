@@ -1,0 +1,198 @@
+{% extends 'app_doc/create_base.html' %}
+{% load staticfiles %}
+{% block title %}新建文档{% endblock %}
+{% block subtitle %}新建文档{% endblock %}
+
+{% block content %}
+    <div class="create-doc-form">
+        <div class="layui-form">
+            <label class="layui-form-label">标题</label>
+            <div class="layui-input-inline">
+              <input type="text" name="doc-name" id="doc-name" required lay-verify="required" placeholder="请输入文档标题" autocomplete="off" class="layui-input">
+            </div>
+            <label class="doc-form-label">所属</label>
+            <div class="layui-input-inline">
+              <select name="pro_id" lay-verify="required"  lay-filter="project" id="project">
+                <option value=""></option>
+                <option value="-1">新建文集</option>
+                  {% for p in project_list %}
+                <option value="{{ p.id }}">《{{ p.name }}》</option>
+                  {% endfor %}
+              </select>
+            </div>
+            <label class="doc-form-label">上级文档</label>
+            <div class="layui-input-inline">
+              <select name="parent_id" lay-verify="required" id="parent-doc">
+                <option value=""></option>
+              </select>
+            </div>
+            <label class="doc-form-label">排序</label>
+            <div class="layui-input-inline">
+              <input class="layui-input" placeholder="99" style="width:50px;" name="sort" id="sort"/>
+            </div>
+            <label class="doc-form-label">
+                <button class="layui-btn layui-btn-primary layui-btn-sm" id="sel-doctemp">插入模板</button>
+            </label>
+            <label class="doc-form-label">
+                <button class="layui-btn layui-btn-normal layui-btn-sm" onclick="createDoc()">保存</button>
+            </label>
+        </div>
+    </div>
+    <div id="editor-md">
+        <textarea style="display:none;"></textarea>
+        <textarea class="editormd-html-textarea" name="$id-html-code"></textarea>
+    </div>
+{% endblock %}
+
+
+{% block custom_script %}
+    <script>
+        //选择文集
+        form.on('select(project)', function(data){
+            console.log(data.value); //得到被选中的值
+            if(data.value == -1){ //新建文集
+                layer.open({
+                    type:1,
+                    title:'新建文集',
+                    area:'300px;',
+                    id:'createPro',//配置ID
+                    content:'<div style="padding: 20px;"><input class="layui-input" type="text" id="pname" style="margin-bottom:10px;" placeholder="输入文集名" required  lay-verify="required"><textarea name="desc" id="desc" placeholder="输入文集简介，不超过100个字，超出将被截断"  maxlength="100" class="layui-textarea"></textarea></div>',
+                    btn:['确定','取消'], //添加按钮
+                    btnAlign:'c', //按钮居中
+                    yes:function (index,layero) {
+                        data = {
+                            'pname':$("#pname").val(),
+                            'desc':$("#desc").val(),
+                        }
+                        $.post("{% url 'create_project' %}",data,function(r){
+                            if(r.status){
+                                //创建成功，更新文集select
+                                $("#project").append("<option value="+r.data.id+">《"+r.data.name+"》</option>");
+                                form.render();
+                                //window.location.reload();
+                                layer.close(index)
+                            }else{
+                                //创建失败，提示
+                                console.log(r)
+
+                            }
+                        })
+                    },
+                });
+            }else{//获取文集的下级文档
+                $.post('{% url 'get_pro_doc' %}',{'pro_id':data.value},function(r){
+                    if(r.status){
+                        //解析文集的下级文档
+                        //console.log(r.data)
+                        $("#parent-doc").empty(); // 清空select选项
+                        $("#parent-doc").append("<option value=''></option>")
+                        for(let i in r.data) {
+                            $("#parent-doc").append("<option value='"+r.data[i][0]+"'>"+r.data[i][3]+r.data[i][1]+"</option>")
+                        };
+                        form.render();
+                    }else{
+                        layer.msg("获取下级文档失败！")
+                    }
+                });
+            }
+        });
+        //保存文档
+        createDoc = function(){
+            var data = {
+                'project':$("#project").val(),
+                'parent_doc':$("#parent-doc").val(),
+                'doc_name':$("#doc-name").val(),
+                'content':editor.getHTML(),
+                'pre_content':editor.getMarkdown(),
+                'sort':$("#sort").val(),
+            }
+            console.log(data)
+            if(data.doc_name == ""){
+                layer.msg('请输入文档标题！');
+            }
+            else if(data.project == ""){
+                layer.msg('请选择文集！');
+            }
+            else{
+                $.post("{% url 'create_doc' %}",data,function(r){
+                    if(r.status){
+                        //创建成功
+                        layer.msg('保存成功',function(){
+                            window.location.href = "{% url 'pro_list' %}";
+                        });
+                    }else{
+                        //创建失败
+                        layer.msg('保存失败:'+r.data);
+                    }
+                });
+            }
+        };
+        //选择文档模板
+        $("#sel-doctemp").click(function(){
+            layer.open({
+              type: 1,
+                id:'temp-div',
+              content: $('#doctemp-list'),
+                area:['530px','300px'],
+            });
+        });
+        //插入模板
+        insertTemp = function(doctemp_id){
+            $.post("{% url 'get_doctemp' %}",{'doctemp_id':doctemp_id},function(r){
+                if(r.status){
+                    editor.insertValue(r.data);
+                    layer.closeAll()
+                }else{
+                    layer.msg(r.data)
+                }
+            });
+        };
+        //删除模板
+        delTemp = function(doctemp_id){
+            layer.open({
+                title:'删除模板',
+                content:'确认删除此模板？',
+                btn:['确定','取消'],
+                yes:function(index,layero){
+
+                },
+            });
+        };
+    </script>
+{% endblock %}
+
+{% block custom_div %}
+    <div class="doctemp-list" id="doctemp-list" style="display: none;width: 500px;">
+    <div style="margin: 10px 0 0 10px;">
+        <a class="layui-btn layui-btn-normal" href="{% url 'create_doctemp' %}" target="_blank">创建新模板</a>
+        <a class="layui-btn layui-btn-normal" href="{% url 'manage_doctemp' %}" target="_blank">管理文档模板</a>
+    </div>
+    <table class="layui-table" style="margin: 10px;">
+      <colgroup>
+        <col width="150">
+        <col width="200">
+        <col>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>模板名称</th>
+          <th>创建时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for temp in doctemp_list %}
+        <tr>
+          <td>{{ temp.name }}</td>
+          <td>{{ temp.create_time }}</td>
+          <td>
+              <a href="javascript:void(0);" onclick="insertTemp('{{temp.id}}');">选择模板</a>
+{#              <a href="javascript:void(0);" onclick="modifyTemp();">修改</a>#}
+{#              <a href="javascript:void(0);" onclick="delTemp();">删除</a>#}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+</div>
+{% endblock %}
